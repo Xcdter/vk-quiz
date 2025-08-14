@@ -1,0 +1,288 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Квиз: расчет кухни</title>
+  <!-- VK Bridge (optional inside VK Mini App) -->
+  <script src="https://unpkg.com/@vkontakte/vk-bridge/dist/browser.min.js"></script>
+  <script>try{vkBridge.send('VKWebAppInit');}catch(e){}</script>
+  <style>
+    :root{
+      --green:#3db627;
+      --green-weak: rgba(61,182,39,.2);
+      --text:#111;
+      --muted:#666;
+      --bg:#fff;
+      --card:#fff;
+      --accent:#2e8f1d;
+      --border:#e8e8e8;
+    }
+    *{box-sizing:border-box}
+    html,body{height:100%}
+    body{
+      margin:0;
+      font-family: -apple-system,BlinkMacSystemFont,Segoe UI,Roboto,Arial,Helvetica Neue,Noto Sans,sans-serif;
+      color:var(--text);
+      background:var(--bg);
+      line-height:1.4;
+    }
+    .wrap{max-width:1100px;margin:0 auto;padding:24px}
+    .promo{
+      display:flex;gap:12px;align-items:center;
+      padding:12px 16px;border-radius:10px;background:#fff;border:1px solid var(--border);
+      box-shadow:0 1px 4px rgba(0,0,0,.03);
+      font-size:15px;color:#0d2; /* green icon mimic */
+    }
+    .promo span{color:#111}
+    .bar{
+      margin:14px 0 24px;border-radius:4px;height:6px;background:var(--green-weak);overflow:hidden;
+    }
+    .bar>i{display:block;height:100%;width:0;background:var(--green);transition:width .25s ease}
+    .card{display:grid;grid-template-columns: minmax(260px, 420px) 1fr;gap:28px;align-items:start}
+    .title{font-weight:700;font-size:28px;margin:0 0 8px}
+    .subtitle{color:var(--muted)}
+    .choices{display:grid;grid-template-columns:repeat(3, minmax(180px, 1fr));gap:22px}
+    .choice{
+      border:1px solid var(--border);border-radius:12px;overflow:hidden;background:var(--card);
+      cursor:pointer;transition:transform .1s ease, box-shadow .15s ease, border-color .15s ease;
+    }
+    .choice:hover{transform:translateY(-1px);box-shadow:0 8px 24px rgba(0,0,0,.06)}
+    .choice input{display:none}
+    .choice .img{position:relative;aspect-ratio:1/1;background:#f4f4f4;display:block;background-size:cover;background-position:center}
+    .choice .name{padding:10px 12px;font-size:15px}
+    .choice.selected{border-color:rgba(0,0,0,.18); box-shadow:0 6px 18px rgba(0,0,0,.08)}
+    .choice.selected .img:after{
+      content:"";position:absolute;inset:auto 8px 8px auto;width:26px;height:26px;border-radius:50%;
+      background:var(--green);box-shadow:0 2px 8px rgba(0,0,0,.2);
+      mask:url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24"><path fill="%23fff" d="M9 16.17 4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/></svg>') center/18px no-repeat;
+      -webkit-mask:url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24"><path fill="%23fff" d="M9 16.17 4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/></svg>') center/18px no-repeat;
+      color:#fff;
+    }
+    .radios{display:grid;gap:12px}
+    .radio{
+      display:flex;align-items:center;gap:10px;padding:14px;border-radius:12px;background:#f6f6f6;border:1px solid #eee;cursor:pointer
+    }
+    .radio input{display:none}
+    .radio .dot{
+      width:18px;height:18px;border-radius:50%;border:2px solid var(--green);display:inline-block;position:relative;background:#fff;
+    }
+    .radio.selected{background:#f3f7f3;border-color:#e2f4e2}
+    .radio.selected .dot{background:var(--green)}
+    .nav{
+      display:flex;gap:12px;justify-content:flex-end;margin-top:24px
+    }
+    .btn{
+      display:inline-flex;align-items:center;gap:8px;padding:12px 18px;border-radius:10px;border:1.5px solid var(--green);
+      background:#fff;color:var(--green);cursor:pointer;font-weight:600
+    }
+    .btn.primary{background:var(--green);color:#fff}
+    .btn:disabled{opacity:.5;cursor:not-allowed}
+    .contact-methods{display:flex;gap:8px;flex-wrap:wrap}
+    .pill{padding:8px 12px;border:1px solid var(--border);border-radius:999px;cursor:pointer}
+    .pill.selected{border-color:var(--green);background:var(--green-weak)}
+    .inputs{display:grid;gap:12px}
+    input[type="tel"], input[type="text"]{
+      width:100%;padding:14px 12px;border-radius:12px;border:1px solid var(--border);font-size:16px
+    }
+    .left-illu{display:flex;align-items:flex-start;justify-content:center}
+    .left-illu .illu{
+      width:180px;height:180px;background:#f5faf5;border:1px dashed var(--green);border-radius:18px;display:flex;align-items:center;justify-content:center;font-size:42px;color:var(--green)
+    }
+    @media (max-width:960px){
+      .card{grid-template-columns:1fr}
+      .choices{grid-template-columns:repeat(2, minmax(160px,1fr))}
+      .left-illu{order:2}
+    }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <div class="promo">🟢 <span>Узнайте стоимость вашей кухни за 2 минуты и получите подарок!</span></div>
+    <div class="bar" aria-label="Прогресс"><i id="progress"></i></div>
+
+    <!-- Шаги -->
+    <section id="step" class="card"></section>
+
+    <div class="nav">
+      <button class="btn" id="back"><span>←</span> Назад</button>
+      <button class="btn primary" id="next">Далее <span>→</span></button>
+    </div>
+  </div>
+
+<script>
+// === ДАННЫЕ ШАГОВ (вынесены, чтобы можно было легко редактировать) ===
+const STEPS = [
+  {
+    key: 'style',
+    title: 'Выберите предпочтительный стиль',
+    type: 'tiles',
+    tiles: [
+      { label: 'Фасады с декором', img: 'https://optim.tildacdn.com/tild3331-3438-4961-a236-363832636336/-/cover/360x360/center/center/-/format/webp/decor_2.png.webp' },
+      { label: 'Гладкие фасады без ручек', img: 'https://optim.tildacdn.com/tild3666-6465-4631-b134-366231313766/-/cover/360x360/center/center/-/format/webp/20250729_1852_Minima.png.webp' },
+      { label: 'Кухня в потолок с антресолью', img: 'https://optim.tildacdn.com/tild3437-6632-4439-b839-626133613536/-/cover/360x360/center/center/-/format/webp/mezz.png.webp' },
+      { label: 'Ещё не определились', img: 'https://optim.tildacdn.com/tild6539-6630-4337-a238-336530343334/-/cover/360x360/center/center/-/format/webp/dnk.png.webp' },
+    ]
+  },
+  {
+    key: 'layout',
+    title: 'Выберете планировку вашей будущей кухни',
+    type: 'tiles',
+    tiles: [
+      { label: 'Прямая', img: 'https://optim.tildacdn.com/tild6430-3231-4166-b935-663039366362/-/resize/360x360/-/format/webp/str.png.webp' },
+      { label: 'П-образная', img: 'https://optim.tildacdn.com/tild3530-3032-4332-a132-366462613937/-/resize/360x360/-/format/webp/a61c8d2d-280d-4280-a.png.webp' },
+      { label: 'Угловая', img: 'https://optim.tildacdn.com/tild6132-6534-4237-b161-316665333161/-/resize/360x360/-/format/webp/L.jpg.webp' },
+      { label: 'С островом', img: 'https://optim.tildacdn.com/tild3262-3932-4633-b036-373532653064/-/resize/360x360/-/format/webp/5d06167a-5c45-45c4-b.png.webp' },
+      { label: 'Другая', img: 'https://optim.tildacdn.com/tild3432-6539-4564-a633-326531626333/-/resize/360x360/-/format/webp/fd8b5dea-697a-4697-b.jpg.webp' },
+      { label: 'Ещё не знаю', img: 'https://optim.tildacdn.com/tild3466-3833-4434-b864-343836656631/-/resize/360x360/-/format/webp/dnk2.png.webp' },
+    ]
+  },
+  {
+    key: 'area',
+    title: 'Укажите площадь вашей кухни в метрах²',
+    type: 'radios',
+    radios: ['Менее 10 метров²','10 - 15 метров²','16 - 20 метров²','Более 20 метров²','Точно не помню'],
+    illu: 'm²'
+  },
+  {
+    key: 'deadline',
+    title: 'В какие сроки вам нужна кухня?',
+    type: 'radios',
+    radios: ['От 1 до 2 месяцев','От 2 до 4 месяцев','От 4 месяцев','Затрудняюсь точно ответить'],
+    illu: '⏱️'
+  },
+  {
+    key: 'budget',
+    title: 'В какой бюджет вы планируете уложиться?',
+    type: 'radios',
+    radios: ['130 - 200 тысяч рублей','200 - 300 тысяч рублей','300 - 400 тысяч рублей','Более 400 тысяч рублей'],
+    illu: '₽'
+  },
+  {
+    key: 'gift',
+    title: 'Выберете подарок к вашей кухне',
+    type: 'tiles',
+    tiles: [
+      { label: 'Вытяжка', img: 'https://images.unsplash.com/photo-1600585154340-1e4ce9a0608b?q=80&w=360&auto=format&fit=crop' },
+      { label: 'Подсветка', img: 'https://images.unsplash.com/photo-1556911220-e15b29be8c8f?q=80&w=360&auto=format&fit=crop' },
+      { label: 'Мойка', img: 'https://images.unsplash.com/photo-1631049552488-0545b71210a8?q=80&w=360&auto=format&fit=crop' },
+    ]
+  },
+  {
+    key: 'contact',
+    title: 'Готово!',
+    subtitle: 'Выберете, как бы вы хотели получить расчёт стоимости кухни по вашим параметрам',
+    type: 'contact'
+  }
+];
+
+const state = { step:0, answers:{} };
+
+const elStep = document.getElementById('step');
+const elBack = document.getElementById('back');
+const elNext = document.getElementById('next');
+const elProgress = document.getElementById('progress');
+
+elBack.addEventListener('click', () => { if(state.step>0){ state.step--; render(); }});
+elNext.addEventListener('click', () => { 
+  if(!validate()) { alert('Пожалуйста, выберите вариант или заполните поле'); return; }
+  if(state.step < STEPS.length - 1){ state.step++; render(); }
+  else { submit(); }
+});
+
+function setProgress(){
+  const p = Math.round(((state.step+1)/STEPS.length)*100);
+  elProgress.style.width = p + '%';
+}
+
+function makeChoiceTile(item, groupKey, selectedValue){
+  const div = document.createElement('label');
+  div.className = 'choice' + (selectedValue===item.label ? ' selected' : '');
+  div.innerHTML = '<input type="radio" name="'+groupKey+'"/>' +
+                  '<span class="img" style="background-image:url('+CSS.escape(item.img)+')"></span>' +
+                  '<div class="name">'+item.label+'</div>';
+  div.addEventListener('click', () => { state.answers[groupKey] = item.label; render(); });
+  return div;
+}
+
+function makeRadio(label, groupKey, selectedValue){
+  const div = document.createElement('label');
+  div.className = 'radio' + (selectedValue===label ? ' selected' : '');
+  div.innerHTML = '<input type="radio" name="'+groupKey+'"/><i class="dot"></i><span>'+label+'</span>';
+  div.addEventListener('click', ()=>{ state.answers[groupKey] = label; render(); });
+  return div;
+}
+
+function render(){
+  setProgress();
+  const s = STEPS[state.step];
+  elBack.disabled = state.step===0;
+  elNext.textContent = state.step === STEPS.length - 1 ? 'Отправить' : 'Далее →';
+
+  // left column (title + optional illu)
+  const left = document.createElement('div');
+  left.className = 'left-illu';
+  const leftBox = document.createElement('div');
+  leftBox.innerHTML = '<h1 class="title">'+s.title+'</h1>' + (s.subtitle ? '<div class="subtitle">'+s.subtitle+'</div>' : '');
+  if(s.illu){
+    const illu = document.createElement('div'); illu.className='illu'; illu.textContent = s.illu; 
+    const wrap = document.createElement('div'); wrap.style.marginTop='10px'; wrap.appendChild(illu);
+    left.appendChild(leftBox); left.appendChild(wrap);
+  }else{
+    left.appendChild(leftBox);
+  }
+
+  // right column (controls)
+  const right = document.createElement('div');
+  if(s.type==='tiles'){
+    const grid = document.createElement('div'); grid.className='choices';
+    (s.tiles||[]).forEach(t => grid.appendChild(makeChoiceTile(t, s.key, state.answers[s.key])));
+    right.appendChild(grid);
+  }else if(s.type==='radios'){
+    const list = document.createElement('div'); list.className='radios';
+    s.radios.forEach(r => list.appendChild(makeRadio(r, s.key, state.answers[s.key])));
+    right.appendChild(list);
+  }else if(s.type==='contact'){
+    const methods = document.createElement('div'); methods.className='contact-methods';
+    ['Телефон','Telegram','WhatsApp'].forEach(m=>{
+      const pill=document.createElement('button'); pill.type='button'; pill.className='pill'+(state.answers['method']===m?' selected':''); pill.textContent=m;
+      pill.addEventListener('click',()=>{ state.answers.method=m; render(); });
+      methods.appendChild(pill);
+    });
+    const inputs = document.createElement('div'); inputs.className='inputs';
+    const phone = document.createElement('input'); phone.type='tel'; phone.placeholder='+7 (999) 999-99-99'; phone.value = state.answers.phone || '';
+    phone.addEventListener('input', e=> state.answers.phone = e.target.value);
+    const name = document.createElement('input'); name.type='text'; name.placeholder='Введите ваше имя'; name.value = state.answers.name || '';
+    name.addEventListener('input', e=> state.answers.name = e.target.value);
+    right.appendChild(methods); right.appendChild(document.createElement('div')).style.height='8px';
+    right.appendChild(phone); right.appendChild(name);
+  }
+
+  elStep.replaceChildren(left, right);
+}
+
+function validate(){
+  const s = STEPS[state.step];
+  if(s.type==='tiles' || s.type==='radios'){
+    return !!state.answers[s.key];
+  }
+  if(s.type==='contact'){
+    return (state.answers.phone||'').replace(/\\D/g,'').length >= 10;
+  }
+  return true;
+}
+
+function submit(){
+  // Показать итог/отправить куда нужно. Здесь — просто alert + лог.
+  const payload = JSON.stringify(state.answers, null, 2);
+  console.log('Ответы квиза:', state.answers);
+  alert('Спасибо! Данные отправлены.\\n\\n' + payload);
+  // Пример отправки на сервер/бота:
+  // fetch('/lead', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(state.answers) })
+  //   .then(()=>alert('Отправлено!')).catch(()=>alert('Ошибка отправки'));
+}
+
+render();
+</script>
+</body>
+</html>
