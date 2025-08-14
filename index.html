@@ -10,10 +10,10 @@
     try {
       vkBridge.send('VKWebAppInit');
       
-      // Максимальный из доступных размеров
+      // Размер окна с учетом VK интерфейса для FullHD мониторов
       vkBridge.send('VKWebAppResizeWindow', {
         width: 800,
-        height: 1000
+        height: 750
       }).catch(() => {
         console.warn('ResizeWindow не поддерживается в этом окружении');
       });
