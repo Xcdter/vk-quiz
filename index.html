@@ -10,6 +10,9 @@
     try {
       vkBridge.send('VKWebAppInit');
       
+      // Добавляем класс для VK Mini App
+      document.body.classList.add('vk-mini-app');
+      
       // Размер окна с учетом VK интерфейса для FullHD мониторов
       vkBridge.send('VKWebAppResizeWindow', {
         width: 800,
@@ -58,14 +61,14 @@
     .subtitle{color:var(--muted)}
     .choices{display:grid;grid-template-columns:repeat(3, minmax(180px, 1fr));gap:22px}
     .choice{
-      border:1px solid var(--border);border-radius:12px;overflow:hidden;background:var(--card);
+      border:2px solid var(--border);border-radius:12px;overflow:hidden;background:var(--card);
       cursor:pointer;transition:transform .1s ease, box-shadow .15s ease, border-color .15s ease;
     }
     .choice:hover{transform:translateY(-1px);box-shadow:0 8px 24px rgba(0,0,0,.06)}
     .choice input{display:none}
     .choice .img{position:relative;aspect-ratio:1/1;background:#f4f4f4;display:block;background-size:cover;background-position:center}
     .choice .name{padding:10px 12px;font-size:15px}
-    .choice.selected{border-color:rgba(0,0,0,.18); box-shadow:0 6px 18px rgba(0,0,0,.08)}
+    .choice.selected{border-color:var(--green); border-width:2px; box-shadow:0 6px 18px rgba(0,0,0,.08)}
     .choice.selected .img:after{
       content:"";position:absolute;inset:auto 8px 8px auto;width:26px;height:26px;border-radius:50%;
       background:var(--green);box-shadow:0 2px 8px rgba(0,0,0,.2);
@@ -106,9 +109,43 @@
     @media (max-width:960px){
       .choices{grid-template-columns:repeat(2, minmax(160px,1fr))}
     }
+
+    /* Только для 2-го вопроса (layout) на планшетах/небольших экранах делаем 3 колонки. */
+    @media (min-width:720px) and (max-width:960px){
+      #step[data-step="layout"] .choices{grid-template-columns:repeat(3, minmax(160px,1fr))}
+    }
+    
+    /* Стили для VK Mini App на мобильных устройствах (только для экранов меньше 800px) */
+    @media (max-width: 799px) {
+      .vk-mini-app .choices {
+        grid-template-columns: repeat(2, minmax(120px, 1fr));
+        gap: 12px;
+      }
+      .vk-mini-app .choice .img {
+        max-height: 80px;
+      }
+      .vk-mini-app .choice .name {
+        padding: 6px 8px;
+        font-size: 13px;
+      }
+      .vk-mini-app .title {
+        font-size: 22px;
+        margin: 0 0 4px;
+      }
+      .vk-mini-app .wrap {
+        padding: 16px;
+      }
+      .vk-mini-app .promo {
+        padding: 8px 12px;
+        font-size: 13px;
+      }
+      .vk-mini-app .bar {
+        margin: 10px 0 16px;
+      }
+    }
     
     /* Стили для десктопной версии в модальном окне */
-    @media (min-width: 961px) {
+    @media (min-width: 800px) {
       .choices {
         grid-template-columns: repeat(4, minmax(140px, 1fr));
         gap: 16px;
@@ -141,6 +178,74 @@
       }
       .bar {
         margin: 12px 0 20px;
+      }
+      
+      /* Специальные стили для вопросов 1 (style), 2 (layout) и 6 (gift) - максимально большие изображения без скролла */
+      #step[data-step="style"] .choices {
+        grid-template-columns: repeat(2, 1fr);
+        gap: 12px;
+        justify-items: stretch;
+      }
+      #step[data-step="layout"] .choices {
+        grid-template-columns: repeat(3, 1fr);
+        gap: 12px;
+        justify-items: stretch;
+      }
+      #step[data-step="gift"] .choices {
+        grid-template-columns: repeat(3, 1fr);
+        gap: 12px;
+        justify-items: stretch;
+      }
+      #step[data-step="style"] .choice {
+        width: 100%;
+        height: 260px;
+        max-width: none;
+        max-height: 260px;
+        display: flex;
+        flex-direction: column;
+      }
+      #step[data-step="layout"] .choice {
+        width: 100%;
+        height: 220px;
+        max-width: none;
+        max-height: 220px;
+        display: flex;
+        flex-direction: column;
+      }
+      #step[data-step="gift"] .choice {
+        width: 100%;
+        height: 260px;
+        max-width: none;
+        max-height: 260px;
+        display: flex;
+        flex-direction: column;
+      }
+      #step[data-step="style"] .choice .img {
+        height: 200px;
+        width: 100%;
+        max-height: 200px;
+        max-width: 100%;
+        flex-shrink: 0;
+      }
+      #step[data-step="layout"] .choice .img {
+        height: 170px;
+        width: 100%;
+        max-height: 170px;
+        max-width: 100%;
+        flex-shrink: 0;
+      }
+      #step[data-step="gift"] .choice .img {
+        height: 200px;
+        width: 100%;
+        max-height: 200px;
+        max-width: 100%;
+        flex-shrink: 0;
+      }
+      #step[data-step="style"] .choice .name,
+      #step[data-step="layout"] .choice .name,
+      #step[data-step="gift"] .choice .name {
+        padding: 8px 10px;
+        font-size: 14px;
       }
     }
   </style>
@@ -306,7 +411,39 @@ function render(){
 
   container.appendChild(contentSection);
 
+  // Помечаем текущий шаг атрибутом для точечного применения стилей
+  elStep.setAttribute('data-step', s.key);
   elStep.replaceChildren(container);
+  if(s.type==='tiles'){
+    fitTileLabelsToOneLine(elStep);
+  }
+}
+
+// Подгоняет размер шрифта подписей в плитках так, чтобы все помещались в одну строку
+function fitTileLabelsToOneLine(scope){
+  const nameNodes = Array.from(scope.querySelectorAll('.choice .name'));
+  if(nameNodes.length===0) return;
+  // сбрасываем возможные предыдущие инлайновые размеры
+  nameNodes.forEach(n => { n.style.fontSize=''; n.style.whiteSpace='nowrap'; });
+  const computed = parseFloat(getComputedStyle(nameNodes[0]).fontSize) || 14;
+  const minPx = 12;
+  const maxPx = Math.max(18, computed); // позволяем увеличить до 18px минимум
+
+  const overflows = () => nameNodes.some(el => el.scrollWidth > el.clientWidth);
+
+  // бинарный поиск максимального размера, который влезает у всех одновременно
+  let lo = minPx, hi = maxPx, best = minPx;
+  while(lo <= hi){
+    const mid = Math.floor((lo + hi) / 2);
+    nameNodes.forEach(n => n.style.fontSize = mid + 'px');
+    if(!overflows()){
+      best = mid;
+      lo = mid + 1;
+    }else{
+      hi = mid - 1;
+    }
+  }
+  nameNodes.forEach(n => n.style.fontSize = best + 'px');
 }
 
 function validate(){
