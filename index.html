@@ -112,10 +112,17 @@
       .choices {
         grid-template-columns: repeat(4, minmax(140px, 1fr));
         gap: 16px;
+        justify-items: center;
+      }
+      .choice {
+        width: 140px;
+        max-width: 140px;
       }
       .choice .img {
         aspect-ratio: 1/1;
-        max-height: 120px;
+        max-height: 100px;
+        width: 100%;
+        max-width: 100px;
       }
       .choice .name {
         padding: 8px 10px;
