@@ -6,7 +6,21 @@
   <title>Квиз: расчет кухни</title>
   <!-- VK Bridge (optional inside VK Mini App) -->
   <script src="https://unpkg.com/@vkontakte/vk-bridge/dist/browser.min.js"></script>
-  <script>try{vkBridge.send('VKWebAppInit');}catch(e){}</script>
+  <script>
+    try {
+      vkBridge.send('VKWebAppInit');
+      
+      // Максимальный из доступных размеров
+      vkBridge.send('VKWebAppResizeWindow', {
+        width: 800,
+        height: 1000
+      }).catch(() => {
+        console.warn('ResizeWindow не поддерживается в этом окружении');
+      });
+    } catch(e) {
+      console.warn('VK Bridge не доступен в этом окружении');
+    }
+  </script>
   <style>
     :root{
       --green:#3db627;
