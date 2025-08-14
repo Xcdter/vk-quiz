@@ -106,7 +106,38 @@
     @media (max-width:960px){
       .choices{grid-template-columns:repeat(2, minmax(160px,1fr))}
     }
-  </style>
+  
+/* ПК-правки — применяются только на широких экранах */
+@media (min-width: 1024px) {
+  .app-card { width: 760px; padding: 24px 24px 28px; }
+  .app-content { max-width: 700px; }
+  .title { font-size: 24px; margin-bottom: 6px; }
+  .subtitle { font-size: 14px; }
+  .bar { height: 6px; margin: 10px 0 18px; }
+  .choices {
+    grid-template-columns: repeat(auto-fit, minmax(180px, 210px));
+    justify-content: center;
+    gap: 16px;
+  }
+  .choice { max-width: 210px; }
+  .choice .name { font-size: 14px; padding: 8px 10px; }
+  .choice .img { aspect-ratio: 1 / 1; }
+  .radios { gap: 10px; }
+  .radio { padding: 12px; }
+  .radio .dot { width: 16px; height: 16px; }
+  .nav { margin-top: 18px; }
+  .btn { padding: 10px 14px; }
+  .btn.primary, .btn { min-width: 200px; }
+  input[type="tel"], input[type="text"] { padding: 12px; font-size: 15px; }
+  .contact-methods { gap: 6px; }
+  .pill { padding: 6px 10px; }
+}
+@media (min-width: 1024px) and (max-height: 820px) {
+  .title { font-size: 22px; }
+  .choices { gap: 14px; }
+}
+
+</style>
 </head>
 <body>
   <div class="wrap">
@@ -295,5 +326,12 @@ function submit(){
 
 render();
 </script>
+
+<script src="https://unpkg.com/@vkontakte/vk-bridge/dist/browser.min.js"></script>
+<script>
+  vkBridge.send('VKWebAppInit');
+  vkBridge.send('VKWebAppResizeWindow', { width: 800, height: 800 }).catch(()=>{});
+</script>
+
 </body>
 </html>
