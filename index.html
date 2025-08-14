@@ -39,7 +39,7 @@
       margin:14px 0 24px;border-radius:4px;height:6px;background:var(--green-weak);overflow:hidden;
     }
     .bar>i{display:block;height:100%;width:0;background:var(--green);transition:width .25s ease}
-    .card{display:grid;grid-template-columns: minmax(260px, 420px) 1fr;gap:28px;align-items:start}
+    .card{display:block}
     .title{font-weight:700;font-size:28px;margin:0 0 8px}
     .subtitle{color:var(--muted)}
     .choices{display:grid;grid-template-columns:repeat(3, minmax(180px, 1fr));gap:22px}
@@ -90,9 +90,7 @@
       width:180px;height:180px;background:#f5faf5;border:1px dashed var(--green);border-radius:18px;display:flex;align-items:center;justify-content:center;font-size:42px;color:var(--green)
     }
     @media (max-width:960px){
-      .card{grid-template-columns:1fr}
       .choices{grid-template-columns:repeat(2, minmax(160px,1fr))}
-      .left-illu{order:2}
     }
   </style>
 </head>
@@ -219,29 +217,26 @@ function render(){
   elBack.disabled = state.step===0;
   elNext.textContent = state.step === STEPS.length - 1 ? 'Отправить' : 'Далее →';
 
-  // left column (title + optional illu)
-  const left = document.createElement('div');
-  left.className = 'left-illu';
-  const leftBox = document.createElement('div');
-  leftBox.innerHTML = '<h1 class="title">'+s.title+'</h1>' + (s.subtitle ? '<div class="subtitle">'+s.subtitle+'</div>' : '');
-  if(s.illu){
-    const illu = document.createElement('div'); illu.className='illu'; illu.textContent = s.illu; 
-    const wrap = document.createElement('div'); wrap.style.marginTop='10px'; wrap.appendChild(illu);
-    left.appendChild(leftBox); left.appendChild(wrap);
-  }else{
-    left.appendChild(leftBox);
-  }
+  // Create main container
+  const container = document.createElement('div');
+  
+  // Add title at the top
+  const titleSection = document.createElement('div');
+  titleSection.innerHTML = '<h1 class="title">'+s.title+'</h1>' + (s.subtitle ? '<div class="subtitle">'+s.subtitle+'</div>' : '');
+  container.appendChild(titleSection);
 
-  // right column (controls)
-  const right = document.createElement('div');
+  // Add content below title
+  const contentSection = document.createElement('div');
+  contentSection.style.marginTop = '24px';
+  
   if(s.type==='tiles'){
     const grid = document.createElement('div'); grid.className='choices';
     (s.tiles||[]).forEach(t => grid.appendChild(makeChoiceTile(t, s.key, state.answers[s.key])));
-    right.appendChild(grid);
+    contentSection.appendChild(grid);
   }else if(s.type==='radios'){
     const list = document.createElement('div'); list.className='radios';
     s.radios.forEach(r => list.appendChild(makeRadio(r, s.key, state.answers[s.key])));
-    right.appendChild(list);
+    contentSection.appendChild(list);
   }else if(s.type==='contact'){
     const methods = document.createElement('div'); methods.className='contact-methods';
     ['Телефон','Telegram','WhatsApp'].forEach(m=>{
@@ -254,11 +249,13 @@ function render(){
     phone.addEventListener('input', e=> state.answers.phone = e.target.value);
     const name = document.createElement('input'); name.type='text'; name.placeholder='Введите ваше имя'; name.value = state.answers.name || '';
     name.addEventListener('input', e=> state.answers.name = e.target.value);
-    right.appendChild(methods); right.appendChild(document.createElement('div')).style.height='8px';
-    right.appendChild(phone); right.appendChild(name);
+    contentSection.appendChild(methods); contentSection.appendChild(document.createElement('div')).style.height='8px';
+    contentSection.appendChild(phone); contentSection.appendChild(name);
   }
 
-  elStep.replaceChildren(left, right);
+  container.appendChild(contentSection);
+
+  elStep.replaceChildren(container);
 }
 
 function validate(){
