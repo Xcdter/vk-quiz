@@ -44,7 +44,7 @@
       background:var(--bg);
       line-height:1.4;
     }
-    .wrap{max-width:1100px;margin:0 auto;padding:24px}
+    .wrap{max-width:1100px;margin:0 auto;padding:24px;min-width:320px}
     .promo{
       display:flex;gap:12px;align-items:center;
       padding:12px 16px;border-radius:10px;background:#fff;border:1px solid var(--border);
@@ -59,15 +59,16 @@
     .card{display:block}
     .title{font-weight:700;font-size:28px;margin:0 0 8px}
     .subtitle{color:var(--muted)}
-    .choices{display:grid;grid-template-columns:repeat(3, minmax(180px, 1fr));gap:22px}
+    .choices{display:grid;grid-template-columns:repeat(3, minmax(180px, 1fr));gap:22px;min-width:0}
     .choice{
       border:2px solid var(--border);border-radius:12px;overflow:hidden;background:var(--card);
       cursor:pointer;transition:transform .1s ease, box-shadow .15s ease, border-color .15s ease;
+      display:flex;flex-direction:column;
     }
     .choice:hover{transform:translateY(-1px);box-shadow:0 8px 24px rgba(0,0,0,.06)}
     .choice input{display:none}
-    .choice .img{position:relative;aspect-ratio:1/1;background:#f4f4f4;display:block;background-size:cover;background-position:center}
-    .choice .name{padding:10px 12px;font-size:15px}
+    .choice .img{position:relative;aspect-ratio:1/1;background:#f4f4f4;display:block;background-size:cover;background-position:center;width:100%;height:auto}
+    .choice .name{padding:10px 12px;font-size:15px;word-wrap:break-word;overflow-wrap:break-word;hyphens:auto;text-align:left;display:block}
     .choice.selected{border-color:var(--green); border-width:2px; box-shadow:0 6px 18px rgba(0,0,0,.08)}
     .choice.selected .img:after{
       content:"";position:absolute;inset:auto 8px 8px auto;width:26px;height:26px;border-radius:50%;
@@ -122,11 +123,17 @@
         gap: 12px;
       }
       .vk-mini-app .choice .img {
-        max-height: 80px;
+        aspect-ratio: 1/1;
+        width: 100%;
+        height: auto;
       }
       .vk-mini-app .choice .name {
-        padding: 6px 8px;
+        padding: 8px 6px;
         font-size: 13px;
+        line-height: 1.2;
+        min-height: 2.4em;
+        text-align: left;
+        display:block;
       }
       .vk-mini-app .title {
         font-size: 22px;
@@ -144,6 +151,170 @@
       }
     }
     
+    /* Стили для очень маленьких экранов (320px и больше) */
+    @media (min-width: 320px) and (max-width: 479px) {
+      .wrap {
+        padding: 12px;
+        max-width: 100%;
+      }
+      
+      .promo {
+        padding: 8px 10px;
+        font-size: 12px;
+        gap: 8px;
+      }
+      
+      .title {
+        font-size: 20px;
+        margin: 0 0 6px;
+      }
+      
+      .subtitle {
+        font-size: 14px;
+      }
+      
+      .choices {
+        grid-template-columns: repeat(2, 1fr);
+        gap: 8px;
+      }
+      
+      .choice {
+        min-width: 0;
+      }
+      
+      .choice .img {
+        aspect-ratio: 1/1;
+        width: 100%;
+        height: auto;
+      }
+      
+      .choice .name {
+        padding: 8px 6px;
+        font-size: 13px;
+        line-height: 1.2;
+        min-height: 2.4em;
+        text-align: left;
+        display:block;
+      }
+      
+      .radios {
+        gap: 8px;
+      }
+      
+      .radio {
+        padding: 10px 12px;
+        font-size: 14px;
+      }
+      
+      .radio .dot {
+        width: 16px;
+        height: 16px;
+        flex-shrink: 0;
+      }
+      
+      .contact-methods {
+        gap: 6px;
+      }
+      
+      .pill {
+        padding: 6px 10px;
+        font-size: 13px;
+      }
+      
+      input[type="tel"], input[type="text"] {
+        padding: 12px 10px;
+        font-size: 16px; /* Предотвращает зум на iOS */
+      }
+      
+      .nav {
+        gap: 8px;
+        margin-top: 16px;
+      }
+      
+      .btn {
+        padding: 10px 14px;
+        font-size: 14px;
+        gap: 6px;
+      }
+      
+      .bar {
+        margin: 8px 0 12px;
+        height: 4px;
+      }
+      
+      /* Специальные стили для экрана благодарности */
+      #step[data-step="thank-you"] {
+        padding: 20px 10px;
+      }
+      
+      #step[data-step="thank-you"] .title {
+        font-size: 24px;
+        margin-bottom: 12px;
+      }
+      
+      #step[data-step="thank-you"] .subtitle {
+        font-size: 16px;
+        line-height: 1.4;
+      }
+    }
+    
+    /* Стили для средних экранов (480px - 799px) */
+    @media (min-width: 480px) and (max-width: 799px) {
+      .wrap {
+        padding: 16px;
+      }
+      
+      .promo {
+        padding: 10px 12px;
+        font-size: 14px;
+      }
+      
+      .title {
+        font-size: 24px;
+        margin: 0 0 6px;
+      }
+      
+      .choices {
+        grid-template-columns: repeat(2, 1fr);
+        gap: 12px;
+      }
+      
+      .choice .img {
+        aspect-ratio: 1/1;
+        width: 100%;
+        height: auto;
+      }
+      
+      .choice .name {
+        padding: 10px 8px;
+        font-size: 14px;
+        line-height: 1.3;
+        min-height: 2.6em;
+        text-align: left;
+        display:block;
+      }
+      
+      .radio {
+        padding: 12px 14px;
+        font-size: 15px;
+      }
+      
+      .pill {
+        padding: 8px 12px;
+        font-size: 14px;
+      }
+      
+      input[type="tel"], input[type="text"] {
+        padding: 14px 12px;
+        font-size: 16px;
+      }
+      
+      .btn {
+        padding: 12px 16px;
+        font-size: 15px;
+      }
+    }
+    
     /* Стили для десктопной версии в модальном окне */
     @media (min-width: 800px) {
       .choices {
@@ -157,13 +328,16 @@
       }
       .choice .img {
         aspect-ratio: 1/1;
-        max-height: 100px;
         width: 100%;
-        max-width: 100px;
+        height: auto;
       }
       .choice .name {
-        padding: 8px 10px;
+        padding: 10px 8px;
         font-size: 14px;
+        line-height: 1.3;
+        min-height: 2.6em;
+        text-align: left;
+        display:block;
       }
       .title {
         font-size: 24px;
@@ -317,9 +491,9 @@ const STEPS = [
     title: 'Выберете подарок к вашей кухне',
     type: 'tiles',
     tiles: [
-      { label: 'Вытяжка', img: 'https://images.unsplash.com/photo-1600585154340-1e4ce9a0608b?q=80&w=360&auto=format&fit=crop' },
-      { label: 'Подсветка', img: 'https://images.unsplash.com/photo-1556911220-e15b29be8c8f?q=80&w=360&auto=format&fit=crop' },
-      { label: 'Мойка', img: 'https://images.unsplash.com/photo-1631049552488-0545b71210a8?q=80&w=360&auto=format&fit=crop' },
+      { label: 'Вытяжка', img: 'https://static.tildacdn.com/tild3836-3566-4139-b664-316664376436/photo.png' },
+      { label: 'Подсветка', img: 'https://static.tildacdn.com/tild3330-3932-4430-a232-383734306163/3.png' },
+      { label: 'Мойка', img: 'https://static.tildacdn.com/tild6237-6535-4864-b937-633166306132/2.png' },
     ]
   },
   {
@@ -423,8 +597,22 @@ function render(){
 function fitTileLabelsToOneLine(scope){
   const nameNodes = Array.from(scope.querySelectorAll('.choice .name'));
   if(nameNodes.length===0) return;
+  
+  // Проверяем ширину экрана
+  const isSmallScreen = window.innerWidth <= 479;
+  
   // сбрасываем возможные предыдущие инлайновые размеры
-  nameNodes.forEach(n => { n.style.fontSize=''; n.style.whiteSpace='nowrap'; });
+  nameNodes.forEach(n => { 
+    n.style.fontSize=''; 
+    // На маленьких экранах разрешаем перенос строк
+    n.style.whiteSpace = isSmallScreen ? 'normal' : 'nowrap';
+    n.style.wordWrap = isSmallScreen ? 'break-word' : 'normal';
+    n.style.overflowWrap = isSmallScreen ? 'break-word' : 'normal';
+  });
+  
+  // На маленьких экранах не изменяем размер шрифта, позволяем тексту переноситься
+  if(isSmallScreen) return;
+  
   const computed = parseFloat(getComputedStyle(nameNodes[0]).fontSize) || 14;
   const minPx = 12;
   const maxPx = Math.max(18, computed); // позволяем увеличить до 18px минимум
@@ -446,6 +634,8 @@ function fitTileLabelsToOneLine(scope){
   nameNodes.forEach(n => n.style.fontSize = best + 'px');
 }
 
+// Убрали наблюдателей размеров, используем только CSS для единообразия размеров
+
 function validate(){
   const s = STEPS[state.step];
   if(s.type==='tiles' || s.type==='radios'){
@@ -461,10 +651,61 @@ function submit(){
   // Показать итог/отправить куда нужно. Здесь — просто alert + лог.
   const payload = JSON.stringify(state.answers, null, 2);
   console.log('Ответы квиза:', state.answers);
-  alert('Спасибо! Данные отправлены.\\n\\n' + payload);
+  
+  // Скрываем навигацию
+  document.querySelector('.nav').style.display = 'none';
+  
+  // Показываем экран благодарности
+  showThankYouScreen();
+  
   // Пример отправки на сервер/бота:
   // fetch('/lead', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(state.answers) })
-  //   .then(()=>alert('Отправлено!')).catch(()=>alert('Ошибка отправки'));
+  //   .then(()=>showThankYouScreen()).catch(()=>alert('Ошибка отправки'));
+}
+
+function showThankYouScreen(){
+  const container = document.createElement('div');
+  container.style.textAlign = 'center';
+  container.style.padding = '40px 20px';
+  
+  // Иконка галочки
+  const checkIcon = document.createElement('div');
+  checkIcon.style.width = '80px';
+  checkIcon.style.height = '80px';
+  checkIcon.style.borderRadius = '50%';
+  checkIcon.style.background = 'var(--green)';
+  checkIcon.style.margin = '0 auto 24px';
+  checkIcon.style.display = 'flex';
+  checkIcon.style.alignItems = 'center';
+  checkIcon.style.justifyContent = 'center';
+  checkIcon.style.fontSize = '40px';
+  checkIcon.style.color = '#fff';
+  checkIcon.innerHTML = '✓';
+  
+  // Заголовок
+  const title = document.createElement('h1');
+  title.className = 'title';
+  title.textContent = 'Спасибо!';
+  title.style.marginBottom = '16px';
+  
+  // Подзаголовок
+  const subtitle = document.createElement('div');
+  subtitle.className = 'subtitle';
+  subtitle.textContent = 'Мы получили вашу заявку и скоро свяжемся с вами.';
+  subtitle.style.fontSize = '18px';
+  subtitle.style.lineHeight = '1.5';
+  subtitle.style.color = 'var(--muted)';
+  
+  container.appendChild(checkIcon);
+  container.appendChild(title);
+  container.appendChild(subtitle);
+  
+  // Помечаем как экран благодарности
+  elStep.setAttribute('data-step', 'thank-you');
+  elStep.replaceChildren(container);
+  
+  // Обновляем прогресс-бар на 100%
+  elProgress.style.width = '100%';
 }
 
 render();
