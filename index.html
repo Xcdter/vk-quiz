@@ -7,22 +7,36 @@
   <!-- VK Bridge (optional inside VK Mini App) -->
   <script src="https://unpkg.com/@vkontakte/vk-bridge/dist/browser.min.js"></script>
   <script>
-    try {
-      vkBridge.send('VKWebAppInit');
-      
-      // Добавляем класс для VK Mini App
-      document.body.classList.add('vk-mini-app');
-      
-      // Размер окна с учетом VK интерфейса для FullHD мониторов
-      vkBridge.send('VKWebAppResizeWindow', {
-        width: 800,
-        height: 1000
-      }).catch(() => {
-        console.warn('ResizeWindow не поддерживается в этом окружении');
-      });
-    } catch(e) {
-      console.warn('VK Bridge не доступен в этом окружении');
-    }
+    (function(){
+      try {
+        vkBridge.send('VKWebAppInit');
+        
+        // Добавляем класс для VK Mini App
+        document.body.classList.add('vk-mini-app');
+        
+        // На десктопе запрашиваем 800x800 несколько раз, чтобы обойти раннюю инициализацию
+        const ensureResize800 = async () => {
+          try{
+            const params = await vkBridge.send('VKWebAppGetLaunchParams');
+            const platform = (params && params.vk_platform) || '';
+            const isDesktop = !/mobile|iphone|ipad|android/i.test(platform);
+            if(!isDesktop) return;
+            
+            const tryResize = async () => {
+              try{ await vkBridge.send('VKWebAppResizeWindow', { width: 800, height: 800 }); }catch(e){}
+            };
+            await tryResize();
+            setTimeout(tryResize, 200);
+            setTimeout(tryResize, 600);
+          }catch(err){
+            console.warn('ResizeWindow не поддерживается в этом окружении', err);
+          }
+        };
+        ensureResize800();
+      } catch(e) {
+        console.warn('VK Bridge не доступен в этом окружении');
+      }
+    })();
   </script>
   <style>
     :root{
