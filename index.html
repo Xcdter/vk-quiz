@@ -724,5 +724,33 @@ function showThankYouScreen(){
 
 render();
 </script>
+<script src="https://unpkg.com/@vkontakte/vk-bridge/dist/browser.min.js"></script>
+<script>
+  vkBridge.send('VKWebAppInit');
+
+  async function forceResize(w = 800, h = 800) {
+    try {
+      const { vk_platform = '' } = await vkBridge.send('VKWebAppGetLaunchParams');
+      if (/android|iphone|ipad|mobile/i.test(vk_platform)) return; // мобильные игнорим
+
+      const doResize = () => vkBridge
+        .send('VKWebAppResizeWindow', { width: w, height: h })
+        .then(r => console.log('Resize OK', r))
+        .catch(e => console.warn('Resize ERR', e));
+
+      doResize();           // сразу
+      setTimeout(doResize, 200);  // после прорисовки
+      setTimeout(doResize, 600);  // на всякий случай
+    } catch (e) {
+      console.warn('Bridge init / params failed', e);
+    }
+  }
+
+  // вызывай на старте
+  window.addEventListener('load', () => forceResize(800, 800));
+
+  // и после каждого переключения шага тоже можно:
+  // forceResize(800, 800);
+</script>
 </body>
 </html>
