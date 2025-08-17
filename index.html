@@ -527,7 +527,11 @@ const elProgress = document.getElementById('progress');
 
 elBack.addEventListener('click', () => { if(state.step>0){ state.step--; render(); }});
 elNext.addEventListener('click', () => { 
-  if(!validate()) { alert('Пожалуйста, выберите вариант или заполните поле'); return; }
+  const validation = validate();
+  if(!validation.valid) { 
+    alert('Пожалуйста, исправьте следующие ошибки:\n\n' + validation.errors.join('\n'));
+    return; 
+  }
   if(state.step < STEPS.length - 1){ state.step++; render(); }
   else { submit(); }
 });
@@ -583,18 +587,111 @@ function render(){
     contentSection.appendChild(list);
   }else if(s.type==='contact'){
     const methods = document.createElement('div'); methods.className='contact-methods';
+    methods.style.marginBottom = '20px';
+    
+    // Добавляем заголовок для методов связи
+    const methodsTitle = document.createElement('div');
+    methodsTitle.textContent = 'Выберите способ связи *';
+    methodsTitle.style.fontSize = '16px';
+    methodsTitle.style.fontWeight = '600';
+    methodsTitle.style.marginBottom = '12px';
+    methodsTitle.style.color = 'var(--text)';
+    methods.appendChild(methodsTitle);
+    
+    const methodsContainer = document.createElement('div');
+    methodsContainer.style.display = 'flex';
+    methodsContainer.style.gap = '8px';
+    methodsContainer.style.flexWrap = 'wrap';
+    
     ['Телефон','Telegram','WhatsApp'].forEach(m=>{
-      const pill=document.createElement('button'); pill.type='button'; pill.className='pill'+(state.answers['method']===m?' selected':''); pill.textContent=m;
+      const pill=document.createElement('button'); 
+      pill.type='button'; 
+      pill.className='pill'+(state.answers['method']===m?' selected':''); 
+      pill.textContent=m;
       pill.addEventListener('click',()=>{ state.answers.method=m; render(); });
-      methods.appendChild(pill);
+      methodsContainer.appendChild(pill);
     });
-    const inputs = document.createElement('div'); inputs.className='inputs';
-    const phone = document.createElement('input'); phone.type='tel'; phone.placeholder='+7 (999) 999-99-99'; phone.value = state.answers.phone || '';
-    phone.addEventListener('input', e=> state.answers.phone = e.target.value);
-    const name = document.createElement('input'); name.type='text'; name.placeholder='Введите ваше имя'; name.value = state.answers.name || '';
+    methods.appendChild(methodsContainer);
+    
+    const inputs = document.createElement('div'); 
+    inputs.className='inputs';
+    inputs.style.display = 'grid';
+    inputs.style.gap = '16px';
+    
+    // Поле для телефона
+    const phoneContainer = document.createElement('div');
+    const phoneLabel = document.createElement('div');
+    phoneLabel.textContent = 'Номер телефона *';
+    phoneLabel.style.fontSize = '16px';
+    phoneLabel.style.fontWeight = '600';
+    phoneLabel.style.marginBottom = '8px';
+    phoneLabel.style.color = 'var(--text)';
+    
+    const phone = document.createElement('input'); 
+    phone.type='tel'; 
+    phone.placeholder='+7 (999) 999-99-99'; 
+    phone.value = state.answers.phone || '';
+    phone.style.width = '100%';
+    phone.style.padding = '14px 12px';
+    phone.style.borderRadius = '12px';
+    phone.style.border = '1px solid var(--border)';
+    phone.style.fontSize = '16px';
+    phone.style.boxSizing = 'border-box';
+    
+    // Добавляем валидацию телефона
+    phone.addEventListener('input', function(e) {
+      let value = e.target.value;
+      
+      // Удаляем все символы кроме цифр, +, (, ), -, пробелов
+      value = value.replace(/[^\d\s\(\)\+\-]/g, '');
+      
+      // Ограничиваем длину
+      if (value.length > 25) {
+        value = value.substring(0, 25);
+      }
+      
+      e.target.value = value;
+      state.answers.phone = value;
+      
+      // Проверяем валидность с использованием normalizePhone
+      validatePhoneField(phone);
+    });
+    
+    phone.addEventListener('blur', function() {
+      validatePhoneField(phone);
+    });
+    
+    phoneContainer.appendChild(phoneLabel);
+    phoneContainer.appendChild(phone);
+    
+    // Поле для имени
+    const nameContainer = document.createElement('div');
+    const nameLabel = document.createElement('div');
+    nameLabel.textContent = 'Ваше имя *';
+    nameLabel.style.fontSize = '16px';
+    nameLabel.style.fontWeight = '600';
+    nameLabel.style.marginBottom = '8px';
+    nameLabel.style.color = 'var(--text)';
+    
+    const name = document.createElement('input'); 
+    name.type='text'; 
+    name.placeholder='Введите ваше имя'; 
+    name.value = state.answers.name || '';
+    name.style.width = '100%';
+    name.style.padding = '14px 12px';
+    name.style.borderRadius = '12px';
+    name.style.border = '1px solid var(--border)';
+    name.style.fontSize = '16px';
+    name.style.boxSizing = 'border-box';
+    
     name.addEventListener('input', e=> state.answers.name = e.target.value);
-    contentSection.appendChild(methods); contentSection.appendChild(document.createElement('div')).style.height='8px';
-    contentSection.appendChild(phone); contentSection.appendChild(name);
+    
+    nameContainer.appendChild(nameLabel);
+    nameContainer.appendChild(name);
+    
+    contentSection.appendChild(methods);
+    contentSection.appendChild(phoneContainer);
+    contentSection.appendChild(nameContainer);
   }
 
   container.appendChild(contentSection);
@@ -653,12 +750,130 @@ function fitTileLabelsToOneLine(scope){
 function validate(){
   const s = STEPS[state.step];
   if(s.type==='tiles' || s.type==='radios'){
-    return !!state.answers[s.key];
+    if (!state.answers[s.key]) {
+      return { valid: false, errors: ['Пожалуйста, выберите вариант'] };
+    }
+    return { valid: true };
   }
   if(s.type==='contact'){
-    return (state.answers.phone||'').replace(/\\D/g,'').length >= 10;
+    const errors = [];
+    
+    // Проверяем, что выбран способ связи
+    if (!state.answers.method) {
+      errors.push('• Выберите способ связи');
+    }
+    
+    // Проверяем, что введено имя
+    if (!state.answers.name || state.answers.name.trim().length < 2) {
+      errors.push('• Введите ваше имя (минимум 2 символа)');
+    }
+    
+    // Проверяем валидность телефона с использованием normalizePhone
+    const phoneValue = state.answers.phone || '';
+    const phoneResult = normalizePhone(phoneValue);
+    
+    if (!phoneValue.trim()) {
+      errors.push('• Введите номер телефона');
+    } else if (!phoneResult.valid) {
+      // Показываем понятные сообщения об ошибках
+      switch (phoneResult.reason) {
+        case 'empty':
+          errors.push('• Введите номер телефона');
+          break;
+        case 'all_same_digits':
+          errors.push('• Номер телефона не может состоять из одинаковых цифр');
+          break;
+        case 'all_zeros':
+          errors.push('• Номер телефона не может состоять только из нулей');
+          break;
+        case 'length':
+          errors.push('• Номер телефона должен содержать от 10 до 15 цифр');
+          break;
+        case 'leading_zero':
+          errors.push('• Номер телефона не может начинаться с нуля');
+          break;
+        case 'e164':
+          errors.push('• Введите корректный номер телефона в международном формате');
+          break;
+        default:
+          errors.push('• Введите корректный номер телефона');
+      }
+    }
+    
+    // Возвращаем результат валидации
+    if (errors.length > 0) {
+      return { valid: false, errors: errors };
+    }
+    
+    return { valid: true };
   }
-  return true;
+  return { valid: true };
+}
+
+// Универсальная нормализация телефона в E.164 (+XXXXXXXXXX...)
+// Возвращает { valid, e164, reason }
+function normalizePhone(raw) {
+  if (!raw) return { valid: false, e164: "", reason: "empty" };
+
+  // 1) убрать всё, кроме цифр и '+' (только первый '+')
+  let v = String(raw).trim();
+  const plus = v.startsWith("+");
+  v = (plus ? "+" : "") + v.replace(/[^\d]/g, "");
+
+  // 2) если начинается с '00', преобразуем в '+'
+  if (v.startsWith("00")) v = "+" + v.slice(2);
+
+  // 3) Russian special-case: 8XXXXXXXXXX (11 цифр) → +7XXXXXXXXXX
+  let digits = v.replace(/\D/g, "");
+  if (!plus && digits.length === 11 && digits[0] === "8") {
+    digits = "7" + digits.slice(1);
+    v = "+" + digits;
+  }
+
+  // 4) Базовая E.164: +, затем 10–15 цифр, первая цифра от 1 до 9
+  // Пропустим и вариант без '+' (например, "7999..."), превратим в '+...'
+  if (!v.startsWith("+")) v = "+" + digits;
+  digits = v.replace(/\D/g, "");
+
+  // дисквалифицируем заведомо мусор: все цифры одинаковые / все нули
+  const allSame = /^(\d)\1+$/.test(digits);
+  if (allSame) return { valid: false, e164: "", reason: "all_same_digits" };
+  if (/^0+$/.test(digits)) return { valid: false, e164: "", reason: "all_zeros" };
+
+  // длина и первая цифра
+  if (digits.length < 10 || digits.length > 15) {
+    return { valid: false, e164: "", reason: "length" };
+  }
+  if (digits[0] === "0") {
+    return { valid: false, e164: "", reason: "leading_zero" };
+  }
+
+  // финальная проверка шаблона E.164
+  const e164 = "+" + digits;
+  if (!/^\+[1-9]\d{9,14}$/.test(e164)) {
+    return { valid: false, e164: "", reason: "e164" };
+  }
+  return { valid: true, e164 };
+}
+
+// Функция валидации поля телефона с использованием normalizePhone
+function validatePhoneField(phoneInput) {
+  const value = phoneInput.value;
+  const result = normalizePhone(value);
+  
+  // Визуальная индикация валидности
+  if (value && !result.valid) {
+    phoneInput.style.borderColor = '#ff4444';
+    phoneInput.style.backgroundColor = '#fff5f5';
+  } else if (value && result.valid) {
+    phoneInput.style.borderColor = 'var(--green)';
+    phoneInput.style.backgroundColor = '#f8fff8';
+  } else {
+    phoneInput.style.borderColor = 'var(--border)';
+    phoneInput.style.backgroundColor = '#fff';
+  }
+  
+  return result.valid;
 }
 
 function submit(){
@@ -714,7 +929,7 @@ function showThankYouScreen(){
   // Кнопка возврата
   const returnButton = document.createElement('button');
   returnButton.className = 'btn primary';
-  returnButton.textContent = 'Перейти в сообщество';
+  returnButton.textContent = 'Вернуться в сообщество';
   returnButton.style.marginTop = '24px';
   returnButton.addEventListener('click', handleReturn);
   
