@@ -1036,23 +1036,16 @@ function showThankYouScreen() {
   const dmBtn = document.createElement('button');
   dmBtn.className = 'btn primary';
   dmBtn.type = 'button';
-  dmBtn.textContent = 'Получить в сообщениях VK';
+  dmBtn.textContent = 'Наши проекты';
   dmBtn.onclick = sendMeInVK;
   btns.appendChild(dmBtn);
 
-  const grpBtn = document.createElement('button');
-  grpBtn.className = 'btn';
-  grpBtn.type = 'button';
-  grpBtn.textContent = 'Перейти в сообщество';
-  grpBtn.onclick = openCommunity;
-  btns.appendChild(grpBtn);
-
-  const closeBtn = document.createElement('button');
-  closeBtn.className = 'btn';
-  closeBtn.type = 'button';
-  closeBtn.textContent = 'Закрыть';
-  closeBtn.onclick = () => { if (window.vkBridge){ vkBridge.send('VKWebAppClose', { status:'success' }).catch(()=>{}); } };
-  btns.appendChild(closeBtn);
+  const faqBtn = document.createElement('button');
+  faqBtn.className = 'btn primary';
+  faqBtn.type = 'button';
+  faqBtn.textContent = 'Частые ошибки';
+  faqBtn.onclick = sendMeInVK;
+  btns.appendChild(faqBtn);
 
   step.replaceChildren(wrap, btns);
 }
