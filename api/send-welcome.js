@@ -1,97 +1,131 @@
 // /api/send-welcome.js
-// Vercel Serverless Function: sends a first message to a user from your VK community.
-// Requirements:
-//  - Environment variable VK_GROUP_TOKEN: community access token with "messages" permission.
-//  - Body JSON: { user_id: number, group_id: number, answers?: object }
+// Отправляет первое сообщение от имени сообщества со сводкой ответов и 3 кнопками-ссылками.
+//
+// Требуется переменная окружения VK_GROUP_TOKEN (токен сообщества с правами "messages").
+// Дополнительно можно задать VK_PROJECTS_URL / VK_REVIEWS_URL / VK_ERRORS_URL,
+// если ссылки на разделы отличаются от дефолтных.
+
 export default async function handler(req, res) {
-  if (req.method !== 'POST') {
-    return res.status(405).json({ ok: false, error: 'Method Not Allowed' });
+  if (req.method !== "POST") {
+    return res.status(405).json({ ok: false, error: "Method Not Allowed" });
   }
 
   try {
-    const { user_id, group_id, answers } = req.body || {};
-    if (!user_id || !group_id) {
-      return res.status(400).json({ ok: false, error: 'user_id and group_id are required' });
-    }
-
     const token = process.env.VK_GROUP_TOKEN;
     if (!token) {
-      return res.status(500).json({ ok: false, error: 'VK_GROUP_TOKEN is not set in environment' });
+      return res
+        .status(500)
+        .json({ ok: false, error: "VK_GROUP_TOKEN is not set in environment" });
     }
 
-    // Helper for VK API calls
+    const { user_id, group_id, answers = {} } = req.body || {};
+    if (!user_id || !group_id) {
+      return res
+        .status(400)
+        .json({ ok: false, error: "user_id и group_id обязательны" });
+    }
+
+    // Базовая ссылка на сообщество
+    const base = `https://vk.com/public${group_id}`;
+
+    // Позволяем переопределить разделы через переменные окружения
+    const PROJECTS_URL = process.env.VK_PROJECTS_URL || base; // укажи точный раздел
+    const REVIEWS_URL =
+      process.env.VK_REVIEWS_URL || base; // укажи точный раздел "Отзывы"
+    const ERRORS_URL =
+      process.env.VK_ERRORS_URL || base; // укажи нужный раздел "Ошибки/FAQ"
+
+    // Хелпер вызова VK API
     const vkCall = async (method, paramsObj) => {
-      const params = new URLSearchParams({ v: '5.199', access_token: token });
+      const params = new URLSearchParams({ v: "5.199", access_token: token });
       for (const [k, v] of Object.entries(paramsObj)) params.append(k, String(v));
-      const resp = await fetch('https://api.vk.com/method/' + method, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-        body: params.toString()
+      const resp = await fetch("https://api.vk.com/method/" + method, {
+        method: "POST",
+        headers: { "Content-Type": "application/x-www-form-urlencoded" },
+        body: params.toString(),
       });
       const json = await resp.json();
-      if (json.error) throw new Error(json.error.error_msg || ('VK API error: ' + method));
+      if (json.error) throw new Error(json.error.error_msg || method);
       return json.response;
     };
 
-    // 1) Check if user allowed messages from the community
-    let allowed;
+    // (Опционально) проверим, разрешены ли сообщения от сообщества
     try {
-      allowed = await vkCall('messages.isMessagesFromGroupAllowed', {
-        user_id, group_id
+      const allowed = await vkCall("messages.isMessagesFromGroupAllowed", {
+        user_id,
+        group_id,
       });
-    } catch (e) {
-      // If the client has already called VKWebAppAllowMessagesFromGroup, this should pass.
-      // If this check fails due to permissions, we can continue to try sending (some portals allow without this check).
-      console.warn('isMessagesFromGroupAllowed check failed:', e.message);
-    }
-
-    if (allowed && allowed.is_allowed !== 1) {
-      return res.status(403).json({ ok: false, error: 'User has not allowed messages from the community' });
-    }
-
-    // 2) Build the message text from answers
-    const lines = [
-      'Спасибо! Мы получили вашу заявку по кухне.',
-    ];
-    if (answers && typeof answers === 'object') {
-      const map = {
-        style: 'Стиль',
-        layout: 'Планировка',
-        area: 'Площадь',
-        deadline: 'Сроки',
-        budget: 'Бюджет',
-        gift: 'Подарок',
-        method: 'Метод связи',
-        name: 'Имя',
-        phone_e164: 'Телефон'
-      };
-      for (const [k, label] of Object.entries(map)) {
-        if (answers[k]) lines.push(`${label}: ${answers[k]}`);
+      if (allowed && allowed.is_allowed !== 1) {
+        return res.status(403).json({
+          ok: false,
+          error:
+            "Пользователь не дал разрешение на сообщения от сообщества (AllowMessages).",
+        });
       }
+    } catch {
+      // Если метод недоступен — продолжаем, обычно всё равно отправится, если юзер уже дал разрешение
     }
-    const messageText = lines.join('\n');
 
-    // 3) Optional: VK keyboard with a quick reply
-    const keyboard = {
-      one_time: false,
-      buttons: [[{
-        action: { type: 'text', label: 'Хочу консультацию' },
-        color: 'primary'
-      }]]
+    // Собираем сводку по ответам (подставляем только те, что есть)
+    const labels = {
+      style: "Стиль",
+      layout: "Планировка",
+      area: "Площадь",
+      deadline: "Срок",
+      budget: "Бюджет",
+      gift: "Подарок",
+      method: "Связь",
+      name: "Имя",
+      phone_e164: "Телефон",
     };
 
-    // 4) Send the message
-    const resp = await vkCall('messages.send', {
+    const lines = ["Спасибо! Мы получили вашу заявку по кухне."];
+    for (const [k, label] of Object.entries(labels)) {
+      if (answers?.[k]) lines.push(`${label}: ${answers[k]}`);
+    }
+    const messageText = lines.join("\n");
+
+    // Клавиатура с тремя кнопками — открывают нужные разделы
+    const keyboard = {
+      inline: true,
+      buttons: [
+        [
+          {
+            action: {
+              type: "open_link",
+              link: PROJECTS_URL,
+              label: "Наши проекты",
+            },
+          },
+          {
+            action: {
+              type: "open_link",
+              link: REVIEWS_URL,
+              label: "Отзывы",
+            },
+          },
+          {
+            action: {
+              type: "open_link",
+              link: ERRORS_URL,
+              label: "Ошибки",
+            },
+          },
+        ],
+      ],
+    };
+
+    // Отправляем сообщение
+    const resp = await vkCall("messages.send", {
       user_id,
-      random_id: Date.now(), // idempotency
+      random_id: Date.now(),
       message: messageText,
-      keyboard: JSON.stringify(keyboard)
+      keyboard: JSON.stringify(keyboard),
     });
 
     return res.status(200).json({ ok: true, result: resp });
   } catch (e) {
-    console.error('send-welcome error:', e);
-    // Rate limiting (429) or network retries could be implemented here if needed
+    console.error("send-welcome error:", e);
     return res.status(500).json({ ok: false, error: e.message || String(e) });
   }
 }
