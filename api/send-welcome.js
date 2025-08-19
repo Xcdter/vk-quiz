@@ -85,35 +85,26 @@ export default async function handler(req, res) {
     }
     const messageText = lines.join("\n");
 
-    // Клавиатура с тремя кнопками — открывают нужные разделы
-    const keyboard = {
-      inline: true,
-      buttons: [
-        [
-          {
-            action: {
-              type: "open_link",
-              link: PROJECTS_URL,
-              label: "Наши проекты",
-            },
-          },
-          {
-            action: {
-              type: "open_link",
-              link: REVIEWS_URL,
-              label: "Отзывы",
-            },
-          },
-          {
-            action: {
-              type: "open_link",
-              link: ERRORS_URL,
-              label: "Ошибки",
-            },
-          },
-        ],
-      ],
-    };
+    // Клавиатура с тремя кнопками — не более 2 open_link в одном ряду
+const keyboard = {
+  inline: true,
+  buttons: [
+    [
+      {
+        action: { type: "open_link", link: PROJECTS_URL, label: "Наши проекты" }
+      },
+      {
+        action: { type: "open_link", link: REVIEWS_URL, label: "Отзывы" }
+      }
+    ],
+    [
+      {
+        action: { type: "open_link", link: ERRORS_URL, label: "Ошибки" }
+      }
+    ]
+  ]
+};
+
 
     // Отправляем сообщение
     const resp = await vkCall("messages.send", {
