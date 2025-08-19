@@ -1006,5 +1006,94 @@ render();
   // и после каждого переключения шага тоже можно:
   // forceResize(800, 800);
 </script>
+
+<script>
+const COMMUNITY_ID = window.COMMUNITY_ID || 0; // TODO: замените 0 на ваш group_id (число)
+
+function showThankYouScreen() {
+  const step = document.getElementById('step') || document.body;
+  const wrap = document.createElement('div');
+  wrap.style.padding = '24px 0';
+  wrap.style.textAlign = 'center';
+
+  const h = document.createElement('h2');
+  h.textContent = 'Спасибо! Ваша заявка отправлена.';
+  h.style.margin = '0 0 8px';
+  wrap.appendChild(h);
+
+  const p = document.createElement('div');
+  p.textContent = 'Мы свяжемся с вами в ближайшее время. Также можем прислать расчёт в сообщения VK.';
+  p.style.color = '#666';
+  p.style.marginBottom = '16px';
+  wrap.appendChild(p);
+
+  const btns = document.createElement('div');
+  btns.style.display = 'flex';
+  btns.style.justifyContent = 'center';
+  btns.style.gap = '10px';
+  btns.style.flexWrap = 'wrap';
+
+  const dmBtn = document.createElement('button');
+  dmBtn.className = 'btn primary';
+  dmBtn.type = 'button';
+  dmBtn.textContent = 'Получить в сообщениях VK';
+  dmBtn.onclick = sendMeInVK;
+  btns.appendChild(dmBtn);
+
+  const grpBtn = document.createElement('button');
+  grpBtn.className = 'btn';
+  grpBtn.type = 'button';
+  grpBtn.textContent = 'Перейти в сообщество';
+  grpBtn.onclick = openCommunity;
+  btns.appendChild(grpBtn);
+
+  const closeBtn = document.createElement('button');
+  closeBtn.className = 'btn';
+  closeBtn.type = 'button';
+  closeBtn.textContent = 'Закрыть';
+  closeBtn.onclick = () => { if (window.vkBridge){ vkBridge.send('VKWebAppClose', { status:'success' }).catch(()=>{}); } };
+  btns.appendChild(closeBtn);
+
+  step.replaceChildren(wrap, btns);
+}
+
+function openCommunity() {
+  if (!window.vkBridge) { window.open('https://vk.com/public' + COMMUNITY_ID, '_blank'); return; }
+  if (!COMMUNITY_ID) { alert('Не задан ID сообщества'); return; }
+  vkBridge.send('VKWebAppOpenCommunity', { group_id: COMMUNITY_ID }).catch(async () => {
+    await vkBridge.send('VKWebAppOpenURL', { url: 'https://vk.com/public' + COMMUNITY_ID });
+  });
+}
+
+async function sendMeInVK() {
+  try {
+    if (!window.vkBridge) throw new Error('VK Bridge недоступен');
+    if (!COMMUNITY_ID) throw new Error('Не задан ID сообщества');
+
+    const lp = await vkBridge.send('VKWebAppGetLaunchParams');
+    const userId = lp?.vk_user_id;
+    if (!userId) throw new Error('Не удалось определить пользователя');
+
+    await vkBridge.send('VKWebAppAllowMessagesFromGroup', {
+      group_id: COMMUNITY_ID,
+      key: 'quiz_thankyou'
+    });
+
+    const r = await fetch('/api/send-welcome', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ user_id: userId, group_id: COMMUNITY_ID, answers: (window.state && state.answers) || {} })
+    });
+    const j = await r.json();
+    if (!j.ok) throw new Error(j.error || 'Сервер ответил ошибкой');
+
+    alert('Мы отправили вам сообщение от сообщества во VK. Проверьте диалоги!');
+  } catch (e) {
+    console.warn('sendMeInVK error', e);
+    alert('Не удалось отправить сообщение. Попробуйте позже.');
+  }
+}
+</script>
+
 </body>
 </html>
