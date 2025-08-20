@@ -25,12 +25,11 @@ export default async function handler(req, res) {
 
     const getUFMapForDeals = async () => {
       if (UF_MAP_CACHE) return UF_MAP_CACHE; // warm cache внутри одного инстанса
-      const r = await call('crm.userfield.list', {
-        filter: { ENTITY_ID: 'CRM_DEAL' },
-        select: ['FIELD_NAME', 'XML_ID'],
-      });
+      const fields = await call('crm.deal.userfield.list', {
+  select: ['FIELD_NAME', 'XML_ID']
+});
       const map = {};
-      for (const f of r) {
+      for (const f of fields) {
         if (f.XML_ID) map[f.XML_ID] = f.FIELD_NAME; // xml_id -> UF_CRM_...
       }
       UF_MAP_CACHE = map;
