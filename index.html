@@ -876,7 +876,22 @@ function validatePhoneField(phoneInput) {
   return result.valid;
 }
 
-function submit(){
+// Преобразуем ответы UI -> ключи как XML_ID полей Битрикс
+function toBitrixAnswers(a = {}) {
+  return {
+    // РОВНО 7 ответов квиза (XML_ID полей в Битрикс):
+    sposob_svyazi: a.method   || '',
+    forma:         a.layout   || '',
+    style:         a.style    || '',
+    razmer:        a.area     || '',
+    sroki:         a.deadline || '',
+    budget:        a.budget   || '',
+    podarok:       a.gift     || ''
+  };
+}
+
+
+async function submit(){
   // Показать итог/отправить куда нужно. Здесь — просто alert + лог.
   const payload = JSON.stringify(state.answers, null, 2);
   console.log('Ответы квиза:', state.answers);
@@ -887,9 +902,30 @@ function submit(){
   // Показываем экран благодарности
   showThankYouScreen();
   
-  // Пример отправки на сервер/бота:
-  // fetch('/lead', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(state.answers) })
-  //   .then(()=>showThankYouScreen()).catch(()=>alert('Ошибка отправки'));
+  let vk_user_id = null;
+  try {
+    if (window.vkBridge) {
+      const lp = await vkBridge.send('VKWebAppGetLaunchParams');
+      vk_user_id = lp?.vk_user_id || null;
+    }
+  } catch {}
+
+  try {
+    await fetch('/api/bitrix-lead', {
+  method: 'POST',
+  headers: { 'Content-Type': 'application/json' },
+  body: JSON.stringify({
+    answers: toBitrixAnswers(state.answers), // РОВНО 7 XML_ID
+    name:   state.answers?.name  || '',      // отдельно
+    phone:  state.answers?.phone || '',      // отдельно (сервер сам нормализует)
+    vk_user_id,
+    utm: {}                                   // если понадобятся UTM
+  })
+});
+
+  } catch (e) {
+    console.warn('Bitrix error', e);
+  }
 }
 
 function showThankYouScreen(){
