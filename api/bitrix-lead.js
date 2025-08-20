@@ -1,231 +1,202 @@
-// /api/bitrix-lead.js
-// Создаёт сделку в Битрикс24, заполняя UF-поля по XML_ID, и привязывает контакт.
-// Ожидаемый payload (JSON, POST):
-// {
-//   "name": "Имя",
-//   "phone": "+79991234567",
-//   "answers": {
-//     "sposob_svyazi": "Телефон",
-//     "forma": "П-образная",
-//     "style": "Ещё не определились",
-//     "razmer": "10 - 15 метров²",
-//     "sroki": "От 2 до 4 месяцев",
-//     "budget": "130 - 200 тысяч рублей",
-//     "podarok": "Подсветка",
-//     "vopros": "— по желанию —"
-//   },
-//   "utm": { "utm_source": "...", "utm_campaign": "..." },
-//   "vk_user_id": 123456789
-// }
+/**
+ * Vercel Serverless function
+ * POST /api/bitrix-lead
+ *
+ * Body JSON:
+ * {
+ *   "name": "Имя",
+ *   "phone": "+79001234567",
+ *   "answers": {
+ *     "sposob_svyazi": "Телеграм",
+ *     "forma": "Прямая",
+ *     "style": "Фасады с декором",
+ *     "razmer": "10 - 15 метров²",
+ *     "sroki": "От 2 до 4 месяцев",
+ *     "budget": "200 - 300 тыс рублей",
+ *     "podarok": "Вытяжка"
+ *   }
+ * }
+ */
 
-const RAW = process.env.BITRIX_WEBHOOK_URL || '';
-const ROOT = RAW
-  .replace(/(crm\.[\w.]+\.json)?$/i, '') // если вдруг в переменную попал метод
-  .replace(/\/?$/, '/');                  // гарантируем ровно один завершающий слэш
+const WEBHOOK = process.env.BITRIX_WEBHOOK_URL;
+// Пример: https://*.bitrix24.ru/rest/XXX/XXXXXXXXXXXXXX/
 
-async function call(method, payload = {}) {
-  const url = `${ROOT}${method}.json`;
+// Универсальный вызов REST Битрикса с логами
+async function bx(method, payload = {}) {
+  const url = `${WEBHOOK}${method}.json`;
+  console.log(`[BX] call → ${method}`, JSON.stringify(payload).slice(0, 1000));
+
   const resp = await fetch(url, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json; charset=utf-8' },
+    method: "POST",
+    headers: { "Content-Type": "application/json;charset=utf-8" },
     body: JSON.stringify(payload),
   });
 
-  let data;
-  try {
-    data = await resp.json();
-  } catch {
-    const txt = await resp.text();
-    console.error('Bitrix raw response:', txt, 'URL:', url);
-    throw new Error('Bitrix JSON parse error');
+  const data = await resp.json().catch(() => ({}));
+  if (!resp.ok) {
+    console.error(`[BX] HTTP ${resp.status}`, data);
+    throw new Error(`Bitrix HTTP ${resp.status}`);
   }
-
   if (data.error) {
-    console.error('bitrix error:', data.error, data.error_description, 'URL:', url, 'payload:', payload);
+    console.error(`[BX] ${method} error:`, data);
     throw new Error(data.error_description || data.error);
   }
+
+  console.log(`[BX] ${method} ok`);
   return data.result;
 }
 
-// Кэш соответствий XML_ID -> UF_CRM_* для CRM_DEAL
-let UF_MAP_CACHE = null;
-async function getUFMapForDeals() {
-  if (UF_MAP_CACHE) return UF_MAP_CACHE;
+// Получаем карту UF-полей сделки: XML_ID → FIELD_NAME (например "UF_CRM_SROKI")
+async function getDealUFMap() {
+  const fields = await bx("crm.deal.userfield.list", {});
 
-  let fields;
-  try {
-    // Нормальный путь
-    fields = await call('crm.deal.userfield.list', { select: ['FIELD_NAME', 'XML_ID', 'LIST'] });
-  } catch (e) {
-    // Фоллбэк для редких порталов
-    if (String(e.message).includes('Method not found')) {
-      fields = await call('crm.userfield.list', {
-        filter: { ENTITY_ID: 'CRM_DEAL' },
-        select: ['FIELD_NAME', 'XML_ID', 'LIST'],
-      });
-    } else {
-      throw e;
+  // Лог только ключи и важные части
+  console.log(
+    "[UF_MAP] raw count:",
+    Array.isArray(fields) ? fields.length : "n/a"
+  );
+
+  const map = {};
+  (fields || []).forEach((f) => {
+    // f: { FIELD_NAME, XML_ID, ... }
+    if (f && f.FIELD_NAME && f.XML_ID) {
+      map[f.XML_ID] = f.FIELD_NAME;
     }
-  }
+  });
 
-  const map = {};          // XML_ID -> UF_CRM_...
-  const enums = {};        // XML_ID -> { TITLE -> ID } (на случай enum-полей)
-  for (const f of fields || []) {
-    if (f.XML_ID && f.FIELD_NAME) map[f.XML_ID] = f.FIELD_NAME;
-    if (f.XML_ID && Array.isArray(f.LIST) && f.LIST.length) {
-      const dict = {};
-      for (const item of f.LIST) {
-        if (item && item.ID && item.VALUE) dict[String(item.VALUE).trim()] = item.ID;
-      }
-      enums[f.XML_ID] = dict;
-    }
-  }
-
-  UF_MAP_CACHE = { map, enums };
-  return UF_MAP_CACHE;
+  console.log("[UF_MAP] built:", map);
+  return map;
 }
 
-function normPhone(raw) {
-  if (!raw) return '';
-  let v = String(raw).trim();
-  const hasPlus = v.startsWith('+');
-  v = (hasPlus ? '+' : '') + v.replace(/[^\d]/g, '');
-  if (v.startsWith('00')) v = '+' + v.slice(2);
-  let d = v.replace(/\D/g, '');
-  if (!hasPlus && d.length === 11 && d[0] === '8') { d = '7' + d.slice(1); v = '+' + d; }
-  if (!v.startsWith('+')) v = '+' + d;
-  return v;
+// Поиск контакта по телефону (упрощённо)
+async function findContactByPhone(phone) {
+  // Иногда удобнее нормализовать телефон:
+  const normalized = String(phone || "").replace(/[^\d+]/g, "");
+  console.log("[CONTACT] find by phone:", normalized);
+
+  const res = await bx("crm.contact.list", {
+    filter: { PHONE: normalized },
+    select: ["ID", "NAME", "PHONE"],
+  });
+
+  // Возвращаем первый найденный ID, если есть
+  const id = Array.isArray(res) && res.length ? res[0].ID : null;
+  console.log("[CONTACT] found ID:", id || "none");
+  return id;
 }
 
-function pushLine(arr, k, v) {
-  if (v != null && String(v).trim() !== '') arr.push(`${k}: ${v}`);
+// Создание контакта
+async function createContact(name, phone) {
+  console.log("[CONTACT] create:", { name, phone });
+
+  const id = await bx("crm.contact.add", {
+    fields: {
+      NAME: name || "Без имени",
+      PHONE: [{ VALUE: phone || "", VALUE_TYPE: "WORK" }],
+    },
+  });
+
+  console.log("[CONTACT] created ID:", id);
+  return id;
 }
 
-function buildComment({ answers = {}, name, phone, utm = {}, vk_user_id }) {
-  // человеко-читаемые подписи под ключи квиза
-  const labels = {
-    style: 'Стиль',
-    forma: 'Планировка',
-    razmer: 'Площадь',
-    sroki: 'Срок',
-    budget: 'Бюджет',
-    podarok: 'Подарок',
-    sposob_svyazi: 'Способ связи',
-    vopros: 'Вопрос/Комментарий',
+// Создание сделки
+async function createDeal({ title, contactId, ufFields }) {
+  const fields = {
+    TITLE: title || "Новая заявка",
+    ...(contactId ? { CONTACT_ID: contactId } : {}),
+    ...(ufFields || {}),
   };
 
-  const lines = [];
-  pushLine(lines, 'Имя', name);
-  pushLine(lines, 'Телефон', phone);
-  for (const [k, label] of Object.entries(labels)) {
-    if (answers[k]) pushLine(lines, label, answers[k]);
-  }
-  if (vk_user_id) pushLine(lines, 'VK user id', vk_user_id);
-  if (utm.utm_source) pushLine(lines, 'UTM source', utm.utm_source);
-  if (utm.utm_campaign) pushLine(lines, 'UTM campaign', utm.utm_campaign);
-  return lines.join('\n');
+  console.log("[DEAL] create fields:", fields);
+
+  const id = await bx("crm.deal.add", {
+    fields,
+    params: { REGISTER_SONET_EVENT: "Y" },
+  });
+
+  console.log("[DEAL] created ID:", id);
+  return id;
 }
 
 export default async function handler(req, res) {
-  if (req.method !== 'POST') return res.status(405).json({ ok: false, error: 'Method Not Allowed' });
-  if (!ROOT) return res.status(500).json({ ok: false, error: 'BITRIX_WEBHOOK_URL not set' });
-
   try {
-    const body = typeof req.body === 'string' ? JSON.parse(req.body || '{}') : (req.body || {});
-    const answers = body.answers || {};
-    const name    = body.name || body.client_name || '';
-    let phone     = body.phone || body.client_phone || '';
-    const utm     = body.utm || {};
-    const vk_user_id = body.vk_user_id || null;
+    if (req.method !== "POST") {
+      res.status(405).json({ ok: false, error: "Method Not Allowed" });
+      return;
+    }
+    if (!WEBHOOK) {
+      res
+        .status(500)
+        .json({ ok: false, error: "BITRIX_WEBHOOK_URL is not set" });
+      return;
+    }
 
-    // нормализуем телефон
-    phone = normPhone(phone || answers.phone || '');
+    const body = await (async () => {
+      try {
+        return typeof req.body === "string" ? JSON.parse(req.body) : req.body;
+      } catch (e) {
+        return {};
+      }
+    })();
 
-    console.log('incoming payload:', JSON.stringify({ name, phone, answers }));
+    const name = (body?.name || "").toString().trim();
+    const phone = (body?.phone || "").toString().trim();
+    const answers = body?.answers || {};
 
-    // получим карту UF полей
-    const { map: UF_MAP, enums: ENUM_MAP } = await getUFMapForDeals();
+    console.log(
+      "incoming payload:",
+      JSON.stringify({ name, phone, answers }, null, 2)
+    );
 
-    // соберём UF-поля сделки по XML_ID
+    if (!phone) {
+      res.status(400).json({ ok: false, error: "phone is required" });
+      return;
+    }
+
+    // 1) Контакт
+    let contactId = await findContactByPhone(phone);
+    if (!contactId) {
+      contactId = await createContact(name, phone);
+    }
+
+    // 2) Карта UF полей сделки (XML_ID → UF_CRM_*)
+    const UF_MAP = await getDealUFMap();
+
+    // 3) Собираем UF-поля из answers по их XML_ID
+    //    Т.к. твои поля — строковые, просто кладём строку.
     const ufFields = {};
-    for (const [xmlId, valRaw] of Object.entries(answers)) {
-      if (valRaw == null || String(valRaw).trim() === '') continue;
-      const ufName = UF_MAP[xmlId];                 // например, UF_CRM_1723...
-      if (!ufName) continue;
+    for (const [xmlId, valueRaw] of Object.entries(answers || {})) {
+      if (valueRaw == null || String(valueRaw).trim() === "") continue;
 
-      // если поле — ENUM и у нас есть словарь значений, подставим ID
-      const dict = ENUM_MAP[xmlId];
-      if (dict && typeof valRaw === 'string') {
-        const trimmed = valRaw.trim();
-        if (dict[trimmed]) {
-          ufFields[ufName] = dict[trimmed];
-          continue;
-        }
+      const ufName = UF_MAP[xmlId]; // например "UF_CRM_SROKI"
+      if (!ufName) {
+        console.warn(`[UF_MAP] no match for XML_ID "${xmlId}" — пропущено`);
+        continue;
       }
-      // иначе запишем как строку
-      ufFields[ufName] = String(valRaw);
+
+      ufFields[ufName] = String(valueRaw);
     }
 
-    // создаём/ищем контакт и привязываем
-    let contactId = null;
-    if (name || phone) {
-      try {
-        // сначала попробуем найти по телефону
-        if (phone) {
-          const found = await call('crm.contact.list', {
-            filter: { PHONE: phone },
-            select: ['ID'],
-          });
-          if (Array.isArray(found) && found.length) {
-            contactId = found[0].ID;
-          }
-        }
-        // если не нашли — создадим
-        if (!contactId) {
-          contactId = await call('crm.contact.add', {
-            fields: {
-              NAME: name || 'Клиент',
-              PHONE: phone ? [{ VALUE: phone, VALUE_TYPE: 'WORK' }] : [],
-            },
-          });
-        }
-      } catch (e) {
-        console.warn('contact create/find failed:', e.message || e);
-      }
-    }
+    console.log("[DEAL] UF fields resolved:", ufFields);
 
-    // соберём поля сделки
-    const dealFields = {
-  TITLE: `Новая заявка от ${name}`,
-  NAME: name,
-  PHONE: [{ VALUE: phone, VALUE_TYPE: "WORK" }],
+    // 4) Создаём сделку
+    const dealId = await createDeal({
+      title: `Новая заявка от ${name || phone}`,
+      contactId,
+      ufFields,
+    });
 
-  // ВАЖНО: используем системные UF_CRM_* коды
-  UF_CRM_SPOSOBSVYAZI: answers.sposob_svyazi,
-  UF_CRM_FORMA: answers.forma,
-  UF_CRM_STYLE: answers.style,
-  UF_CRM_RAZMER: answers.razmer,
-  UF_CRM_SROKI: answers.sroki,
-  UF_CRM_BUDGET: answers.budget,
-  UF_CRM_PODAROK: answers.podarok,
-};
-
-
-    // создаём сделку
-    const dealId = await call('crm.deal.add', { fields: dealFields, params: { REGISTER_SONET_EVENT: 'Y' } });
-
-    // на некоторых порталах полезно продублировать явную привязку контакта
-    if (contactId) {
-      try {
-        await call('crm.deal.contact.add', { id: dealId, fields: { CONTACT_ID: contactId } });
-      } catch (e) {
-        console.warn('deal.contact.add warning:', e.message || e);
-      }
-    }
-
-    res.status(200).json({ ok: true, dealId, contactId: contactId || null, sent: dealFields });
+    res.status(200).json({
+      ok: true,
+      dealId,
+      contactId,
+      sentUF: ufFields,
+      note:
+        "Если какие-то UF-поля не заполнились — проверь, что XML_ID в answers совпадает с XML_ID полей в Битриксе (CRM → Настройки → Пользовательские поля → Сделки).",
+    });
   } catch (e) {
-    console.error('bitrix-deal error:', e);
-    res.status(500).json({ ok: false, error: e.message || String(e) });
+    console.error("bitrix-lead fatal:", e?.message || e);
+    res.status(500).json({ ok: false, error: e?.message || "Server error" });
   }
 }
