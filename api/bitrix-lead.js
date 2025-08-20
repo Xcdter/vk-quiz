@@ -196,15 +196,20 @@ export default async function handler(req, res) {
 
     // соберём поля сделки
     const dealFields = {
-      TITLE: name ? `Заявка из квиза — ${name}` : 'Заявка из квиза',
-      COMMENTS: buildComment({ answers, name, phone, utm, vk_user_id }),
-      SOURCE_ID: 'WEB',
-      ASSIGNED_BY_ID: process.env.BITRIX_ASSIGNED_ID || undefined,
-      CATEGORY_ID: process.env.BITRIX_CATEGORY_ID != null ? Number(process.env.BITRIX_CATEGORY_ID) : undefined,
-      STAGE_ID: process.env.BITRIX_STAGE_ID || undefined,
-      CONTACT_ID: contactId || undefined,
-      ...ufFields, // UF_CRM_* поля
-    };
+  TITLE: `Новая заявка от ${name}`,
+  NAME: name,
+  PHONE: [{ VALUE: phone, VALUE_TYPE: "WORK" }],
+
+  // ВАЖНО: используем системные UF_CRM_* коды
+  UF_CRM_SPOSOBSVYAZI: answers.sposob_svyazi,
+  UF_CRM_FORMA: answers.forma,
+  UF_CRM_STYLE: answers.style,
+  UF_CRM_RAZMER: answers.razmer,
+  UF_CRM_SROKI: answers.sroki,
+  UF_CRM_BUDGET: answers.budget,
+  UF_CRM_PODAROK: answers.podarok,
+};
+
 
     // создаём сделку
     const dealId = await call('crm.deal.add', { fields: dealFields, params: { REGISTER_SONET_EVENT: 'Y' } });
