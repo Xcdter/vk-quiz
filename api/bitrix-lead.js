@@ -70,15 +70,20 @@ async function findOrCreateContact(name, phone) {
   return contactId;
 }
 
-// 2) Маппинг ключей ответов квиза -> XML_ID пользовательских полей сделки
+// ключи = названия ответов, которые ты шлёшь с фронта (answers)
+// значения = реальные XML_ID полей сделки из crm.deal.fields
 const FIELD_MAP = {
-  sposob_svyazi: 'UF_CRM_SPOSOBSVYAZI',
-  forma:         'UF_CRM_FORMA',
-  style:         'UF_CRM_STYLE',
-  razmer:        'UF_CRM_RAZMER',
-  sroki:         'UF_CRM_SROKI',
-  budget:        'UF_CRM_BUDGET',
-  podarok:       'UF_CRM_PODAROK',
+  sposob_svyazi: 'UF_CRM_6898FF0473B14', // sposob_svyazi
+  forma:         'UF_CRM_689900229E0B9', // forma
+  style:         'UF_CRM_68990022A982B', // style
+  razmer:        'UF_CRM_68990022B3119', // razmer
+  sroki:         'UF_CRM_68990022BC2D5', // sroki
+  budget:        'UF_CRM_68990022C5E9D', // budget
+  podarok:       'UF_CRM_68990022D2C13', // podarok
+  // если понадобится — можно добавить и эти поля:
+  // zvonok:     'UF_CRM_6898FF047FAB7',
+  // tranid:     'UF_CRM_6898FF048A574',
+  // formname:   'UF_CRM_6898FF04936DC',
 };
 
 // 3) Собираем объект UF_* для сделки
