@@ -453,6 +453,23 @@
   </div>
 
 <script>
+  // Утилита: безопасно отправляет событие в VK Ads из мини-приложения
+  function trackVK(event_type, data = {}) {
+    try {
+      if (!window.vkBridge) return; // вне ВК просто молчим
+      // В data лучше передавать короткие строковые/числовые поля
+      vkBridge.send('VKWebAppTrackEvent', {
+        event_type,      // например: 'lead_submitted'
+        data             // например: { budget: '200-300', layout: 'Прямая' }
+      });
+      console.log('[VK Ads] track', event_type, data);
+    } catch (e) {
+      console.warn('[VK Ads] track error', e);
+    }
+  }
+</script>
+
+<script>
 // === ДАННЫЕ ШАГОВ (вынесены, чтобы можно было легко редактировать) ===
 const STEPS = [
   {
@@ -911,21 +928,43 @@ async function submit(){
   } catch {}
 
   try {
-    await fetch('/api/bitrix-lead', {
-  method: 'POST',
-  headers: { 'Content-Type': 'application/json' },
-  body: JSON.stringify({
-    answers: toBitrixAnswers(state.answers), // РОВНО 7 XML_ID
-    name:   state.answers?.name  || '',      // отдельно
-    phone:  state.answers?.phone || '',      // отдельно (сервер сам нормализует)
-    vk_user_id,
-    utm: {}                                   // если понадобятся UTM
-  })
-});
+  const res = await fetch('/api/bitrix-lead', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      answers: toBitrixAnswers(state.answers), // РОВНО 7 XML_ID
+      name:   state.answers?.name  || '',      // отдельно
+      phone:  state.answers?.phone || '',      // отдельно (сервер сам нормализует)
+      vk_user_id,
+      utm: {}                                   // если понадобятся UTM
+    })
+  });
 
-  } catch (e) {
-    console.warn('Bitrix error', e);
-  }
+  if (!res.ok) throw new Error(`HTTP ${res.status}`);
+  const data = await res.json().catch(() => ({}));
+
+  // ---- Только после успешного ответа шлём целевое событие в VK Ads
+  trackVK('lead_submitted', {
+    style:    state.answers?.style    || '',
+    layout:   state.answers?.layout   || '',
+    area:     state.answers?.area     || '',
+    deadline: state.answers?.deadline || '',
+    budget:   state.answers?.budget   || '',
+    gift:     state.answers?.gift     || '',
+    source:   'vk-mini-app',
+    dealId:    data?.dealId    ?? '',
+    contactId: data?.contactId ?? ''
+  });
+
+} catch (e) {
+  console.warn('Bitrix error', e);
+
+  // (Опционально) событие ошибки — полезно видеть отказы в Ads
+  trackVK('lead_submit_failed', {
+    reason: String(e?.message || e),
+    source: 'vk-mini-app'
+  });
+}
 }
 
 function showThankYouScreen(){
