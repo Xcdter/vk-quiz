@@ -158,7 +158,7 @@ export default async function handler(req) {
 
     const contactId = await findOrCreateContact(name, phone);
     const dealId    = await createDeal({
-      title: `Новая заявка от ${name}`,
+      title: `Заявка с VK - ${name} - ${normalizePhone(phone)} - ${new Date().toLocaleString('ru-RU')}`,
       contactId,
       answers,
     });
