@@ -709,6 +709,28 @@ function render(){
     contentSection.appendChild(methods);
     contentSection.appendChild(phoneContainer);
     contentSection.appendChild(nameContainer);
+
+    // Чекбокс согласия на обработку ПДн
+    const consentContainer = document.createElement('label');
+    consentContainer.style.display = 'flex';
+    consentContainer.style.alignItems = 'flex-start';
+    consentContainer.style.gap = '8px';
+    consentContainer.style.fontSize = '13px';
+    consentContainer.style.color = 'var(--muted)';
+
+    const consent = document.createElement('input');
+    consent.type = 'checkbox';
+    consent.checked = !!state.answers.policyConsent;
+    consent.style.marginTop = '3px';
+    consent.addEventListener('change', (e) => { state.answers.policyConsent = e.target.checked; });
+
+    const consentText = document.createElement('span');
+    consentText.innerHTML = 'Согласен на обработку персональных данных в соответствии с <a href="https://xn--80aadobbqbeppee3c7a3a.xn--p1ai/policy" target="_blank" rel="noopener" style="text-decoration: underline; color: inherit;">политикой конфиденциальности</a>';
+
+    consentContainer.appendChild(consent);
+    consentContainer.appendChild(consentText);
+
+    contentSection.appendChild(consentContainer);
   }
 
   container.appendChild(contentSection);
