@@ -839,6 +839,11 @@ function validate(){
       }
     }
     
+    // Проверяем согласие с политикой конфиденциальности
+    if (!state.answers.policyConsent) {
+      errors.push('• Подтвердите согласие на обработку персональных данных');
+    }
+
     // Возвращаем результат валидации
     if (errors.length > 0) {
       return { valid: false, errors: errors };
