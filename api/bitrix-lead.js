@@ -112,6 +112,7 @@ async function createDeal({ title, contactId, answers }) {
   const fields = {
     TITLE: title,
     CONTACT_ID: contactId,
+    ASSIGNED_BY_ID: 11,
     ...uf,
   };
 
